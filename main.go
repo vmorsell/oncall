@@ -16,6 +16,7 @@ import (
 	"github.com/opsgenie/opsgenie-go-sdk-v2/og"
 	ogSchedule "github.com/opsgenie/opsgenie-go-sdk-v2/schedule"
 	ogTeam "github.com/opsgenie/opsgenie-go-sdk-v2/team"
+	ogUser "github.com/opsgenie/opsgenie-go-sdk-v2/user"
 	"github.com/rivo/tview"
 	"gopkg.in/yaml.v2"
 )
@@ -25,6 +26,7 @@ type opsGenie struct {
 	escalation *ogEscalation.Client
 	schedule   *ogSchedule.Client
 	team       *ogTeam.Client
+	user       *ogUser.Client
 }
 
 func NewOpsGenie(apiKey string) opsGenie {
@@ -48,12 +50,17 @@ func NewOpsGenie(apiKey string) opsGenie {
 	if err != nil {
 		log.Fatalf("team: %v", err)
 	}
+	user, err := ogUser.NewClient(cfg)
+	if err != nil {
+		log.Fatalf("user: %v", err)
+	}
 
 	return opsGenie{
 		alert,
 		escalation,
 		schedule,
 		team,
+		user,
 	}
 }
 
@@ -82,6 +89,7 @@ type Schedule struct {
 
 type OnCallUser struct {
 	name       string
+	employeeID string
 	starts     time.Time
 	ends       time.Time
 }
@@ -158,8 +166,16 @@ func onCallUsers(ctx context.Context, app *tview.Application, og opsGenie, teamN
 					log.Fatalf("get user: %v", err)
 				}
 
+				var employeeID string
+				if eids, ok := user.Details["employeenumber"]; ok {
+					if len(eids) == 1 {
+						employeeID = eids[0]
+					}
+				}
+
 				u := OnCallUser{
 					name:       p.Recipient.Name,
+					employeeID: employeeID,
 					starts:     p.StartDate,
 					ends:       p.EndDate,
 				}
@@ -185,7 +201,7 @@ func onCallUsers(ctx context.Context, app *tview.Application, og opsGenie, teamN
 		})
 		current.SetDynamicColors(true)
 		for _, u := range s.onCallUsers {
-			fmt.Fprintf(current, "%s\n[#aaaaaa]now -> %s[white]\n\n", emailToName(u.name), u.ends.Local().Format("mon jan 2 15.04"))
+			fmt.Fprintf(current, "%s (%s)\n[#aaaaaa]now -> %s[white]\n\n", emailToName(u.name), u.employeeID, u.ends.Local().Format("mon jan 2 15.04"))
 		}
 
 		next := tview.NewTextView()
@@ -194,7 +210,7 @@ func onCallUsers(ctx context.Context, app *tview.Application, og opsGenie, teamN
 		})
 		next.SetDynamicColors(true)
 		for _, u := range s.nextOnCallUsers {
-			fmt.Fprintf(next, "[#aaaaaa]%s\n%s -> %s[white]\n\n", emailToName(u.name), u.starts.Local().Format("Mon Jan _2 15:04"), u.ends.Local().Format("Mon Jan 2 15.04"))
+			fmt.Fprintf(next, "[#aaaaaa]%s (%s)\n%s -> %s[white]\n\n", emailToName(u.name), u.employeeID, u.starts.Local().Format("Mon Jan _2 15:04"), u.ends.Local().Format("Mon Jan 2 15.04"))
 		}
 
 		f.AddItem(current, 0, 1, false)
