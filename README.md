@@ -1,10 +1,26 @@
-# On-call CLI tool
+# OpsGenie on-call experiments
 
 ## Usage
 
 ```sh
 oncall
 ```
+
+## Install
+
+1. Clone the repository
+
+   ```sh
+   git clone git@github.com:vmorsell/oncall.git
+   ```
+
+2. Compile and install the binary.
+
+   ```sh
+   cd oncall && go install
+   ```
+
+3. Set up the config file as described below.
 
 ## Config
 
