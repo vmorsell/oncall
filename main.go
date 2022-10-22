@@ -79,7 +79,6 @@ func main() {
 		}
 		layout.AddItem(onCallScheduleBox(schedule), 0, 1, visible)
 	}
-	layout.AddItem(tview.NewBox().SetBorder(true).SetTitle(" Open Alerts "), 0, 3, false)
 
 	app.SetRoot(layout, true)
 	if err := app.Run(); err != nil {
