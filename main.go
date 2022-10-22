@@ -108,7 +108,9 @@ func main() {
 
 		if event.Rune() >= one && event.Rune() <= max {
 			menu.Highlight(fmt.Sprint(event.Rune() - one)).ScrollToHighlight()
+			return nil
 		}
+
 		return event
 	})
 
