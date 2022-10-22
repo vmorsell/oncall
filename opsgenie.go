@@ -12,6 +12,7 @@ import (
 	ogAlert "github.com/opsgenie/opsgenie-go-sdk-v2/alert"
 	ogClient "github.com/opsgenie/opsgenie-go-sdk-v2/client"
 	ogEscalation "github.com/opsgenie/opsgenie-go-sdk-v2/escalation"
+	"github.com/opsgenie/opsgenie-go-sdk-v2/og"
 	ogSchedule "github.com/opsgenie/opsgenie-go-sdk-v2/schedule"
 	ogTeam "github.com/opsgenie/opsgenie-go-sdk-v2/team"
 	ogUser "github.com/opsgenie/opsgenie-go-sdk-v2/user"
@@ -67,7 +68,7 @@ type Escalation struct {
 
 type Schedule struct {
 	name    string
-	delay   ogEscalation.EscalationDelay
+	delay   int // Delay in seconds
 	periods []Period
 }
 
@@ -75,6 +76,22 @@ type Period struct {
 	starts time.Time
 	ends   time.Time
 	email  string
+}
+
+// Convert OpsGenie delay to seconds.
+func delayToSeconds(v ogEscalation.EscalationDelay) (int, error) {
+	mapping := map[og.TimeUnit]int{
+		"minutes": 60,
+		"hours":   3600,
+	}
+
+	unit := string(v.TimeUnit)
+	c, ok := mapping[v.TimeUnit]
+	if !ok {
+		return 0, fmt.Errorf("missing coefficient for unit %s", unit)
+	}
+
+	return int(v.TimeAmount) * c, nil
 }
 
 func (og *opsGenieClient) getSchedule(ctx context.Context, teamName string, weeks int) (Schedule, error) {
@@ -113,9 +130,14 @@ func (og *opsGenieClient) getSchedule(ctx context.Context, teamName string, week
 		log.Fatalf("get timeline: %v", err)
 	}
 
+	delay, err := delayToSeconds(escalationRule.Delay)
+	if err != nil {
+		return Schedule{}, fmt.Errorf("delay to seconds: %w", err)
+	}
+
 	s := Schedule{
 		name:  timeline.ScheduleInfo.Name,
-		delay: escalationRule.Delay,
+		delay: delay,
 	}
 	for _, r := range timeline.FinalTimeline.Rotations {
 		for _, p := range r.Periods {
@@ -165,5 +187,5 @@ func readConfig() (Config, error) {
 }
 
 func ptr[V bool | time.Time](v V) *V {
-	return &v 
+	return &v
 }

@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	ogEscalation "github.com/opsgenie/opsgenie-go-sdk-v2/escalation"
-	"github.com/opsgenie/opsgenie-go-sdk-v2/og"
 	"github.com/rivo/tview"
 )
 
@@ -34,18 +32,8 @@ func fmtTime(t time.Time) string {
 	return t.Local().Format("Mon Jan _2 15:04")
 }
 
-func fmtDelay(v ogEscalation.EscalationDelay) string {
-	units := map[og.TimeUnit]string{
-		"minutes": "min",
-		"hours":   "h",
-	}
-
-	unit := string(v.TimeUnit)
-	if res, ok := units[v.TimeUnit]; ok {
-		unit = res
-	}
-
-	return fmt.Sprintf("%d %s", v.TimeAmount, unit)
+func fmtDelay(v int) string {
+	return fmt.Sprintf("%d min", v/60)
 }
 
 func emailToName(v string) string {
