@@ -37,7 +37,10 @@ func scheduleTable(schedule Schedule) *tview.Table {
 			emailToName(p.email),
 		}
 		for j, v := range values {
-			table.SetCell(i+1, j, tview.NewTableCell(v))
+			cell := tview.NewTableCell(v)
+			cell.SetMaxWidth(15)
+
+			table.SetCell(i+1, j, cell)
 		}
 	}
 
