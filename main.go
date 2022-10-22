@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -72,19 +73,43 @@ func main() {
 	}
 	og := NewOpsGenieClient(cfg.OpsGenie.APIKey)
 
-	app := tview.NewApplication()
+	menu := tview.NewTextView()
+	pages := tview.NewPages()
 
-	layout := tview.NewFlex().SetDirection(tview.FlexRow)
-	for _, name := range cfg.TeamNames {
+	menu.SetDynamicColors(true)
+	menu.SetRegions(true)
+	menu.SetHighlightedFunc(func(added, _, _ []string) {
+		pages.SwitchToPage(added[0])
+	})
+
+	for i, name := range cfg.TeamNames {
 		schedule, err := og.getSchedule(ctx, name, 3)
 		if err != nil {
 			log.Fatalf("get schedule: %v", err)
 		}
-		table := scheduleTable(schedule)
-		table.SetBorder(true)
-		table.SetTitle(fmt.Sprintf(" %s: %s ", fmtDelay(schedule.delay), schedule.name))
-		layout.AddItem(table, 0, 1, true)
+		pages.AddPage(strconv.Itoa(i), scheduleTable(schedule), true, i == 0)
+
+		fmt.Fprintf(menu, `%d ["%d"][darkcyan]%s[white][""]  `, i+1, i, name)
 	}
+	menu.Highlight("0")
+
+	layout := tview.NewFlex().SetDirection(tview.FlexRow)
+	layout.AddItem(pages, 0, 1, true)
+	layout.AddItem(menu, 1, 1, false)
+
+	app := tview.NewApplication()
+
+	// Listen to keyboard events.
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// Page navigation with number keys.
+		one := rune(49)
+		max := one + rune(pages.GetPageCount()-1)
+
+		if event.Rune() >= one && event.Rune() <= max {
+			menu.Highlight(fmt.Sprint(event.Rune() - one)).ScrollToHighlight()
+		}
+		return event
+	})
 
 	app.SetRoot(layout, true)
 	if err := app.Run(); err != nil {
