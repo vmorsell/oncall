@@ -17,26 +17,24 @@ func scheduleTable(schedule Schedule) *tview.Table {
 	table.SetBorders(false)
 
 	headers := []string{
-		"Name",
 		"Start Time",
 		"End Time",
+		"Name",
 	}
 	for i, h := range headers {
 		cell := tview.NewTableCell(h)
 		cell.SetAttributes(tcell.AttrBold)
 		cell.SetSelectable(false)
-		if i == 0 {
-			cell.SetExpansion(1)
-		}
+		cell.SetExpansion(1)
 
 		table.SetCell(0, i, cell)
 	}
 
 	for i, p := range schedule.periods {
 		values := []string{
-			emailToName(p.email),
 			fmtTime(p.starts),
 			fmtTime(p.ends),
+			emailToName(p.email),
 		}
 		for j, v := range values {
 			table.SetCell(i+1, j, tview.NewTableCell(v))
