@@ -7,22 +7,42 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
-func onCallScheduleBox(schedule Schedule) *tview.Flex {
-	text := tview.NewTextView()
-	text.SetDynamicColors(true)
-	for _, p := range schedule.periods {
-		fmt.Fprintf(text, "%s\n[#aaaaaa]%s -> %s[white]\n\n", emailToName(p.email), fmtTime(p.starts), fmtTime(p.ends))
+func scheduleTable(schedule Schedule) *tview.Table {
+	table := tview.NewTable()
+	table.SetBorders(false)
+
+	headers := []string{
+		"Name",
+		"Start Time",
+		"End Time",
+	}
+	for i, h := range headers {
+		cell := tview.NewTableCell(h)
+		cell.SetAttributes(tcell.AttrBold)
+		cell.SetSelectable(false)
+		if i == 0 {
+			cell.SetExpansion(1)
+		}
+
+		table.SetCell(0, i, cell)
 	}
 
-	flex := tview.NewFlex()
-	flex.SetTitle(fmt.Sprintf(" %s: %s ", fmtDelay(schedule.delay), schedule.name))
-	flex.SetBorder(true)
-	flex.AddItem(text, 0, 1, true)
+	for i, p := range schedule.periods {
+		values := []string{
+			emailToName(p.email),
+			fmtTime(p.starts),
+			fmtTime(p.ends),
+		}
+		for j, v := range values {
+			table.SetCell(i+1, j, tview.NewTableCell(v))
+		}
+	}
 
-	return flex
+	return table
 }
 
 func fmtTime(t time.Time) string {
@@ -55,17 +75,15 @@ func main() {
 	app := tview.NewApplication()
 
 	layout := tview.NewFlex().SetDirection(tview.FlexRow)
-	for i, name := range cfg.TeamNames {
-		var visible = false
-		if i == 0 {
-			visible = true
-		}
-
+	for _, name := range cfg.TeamNames {
 		schedule, err := og.getSchedule(ctx, name, 3)
 		if err != nil {
 			log.Fatalf("get schedule: %v", err)
 		}
-		layout.AddItem(onCallScheduleBox(schedule), 0, 1, visible)
+		table := scheduleTable(schedule)
+		table.SetBorder(true)
+		table.SetTitle(fmt.Sprintf(" %s: %s ", fmtDelay(schedule.delay), schedule.name))
+		layout.AddItem(table, 0, 1, true)
 	}
 
 	app.SetRoot(layout, true)
