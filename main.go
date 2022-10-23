@@ -28,7 +28,10 @@ func tableBox(title string, headers []string, data [][]string) *tview.Table {
 
 	for r, d := range data {
 		for c, v := range d {
-			table.SetCellSimple(r+1, c, v)
+			cell := tview.NewTableCell(v)
+			cell.SetMaxWidth(50)
+
+			table.SetCell(r+1, c, cell)
 		}
 	}
 
