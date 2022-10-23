@@ -12,15 +12,11 @@ import (
 	"github.com/rivo/tview"
 )
 
-func scheduleTable(schedule Schedule) *tview.Table {
+func tableBox(title string, headers []string, data [][]string) *tview.Table {
 	table := tview.NewTable()
-	table.SetBorders(false)
+	table.SetBorder(true)
+	table.SetTitle(fmt.Sprintf(" %s ", title))
 
-	headers := []string{
-		"Start Time",
-		"End Time",
-		"Name",
-	}
 	for i, h := range headers {
 		cell := tview.NewTableCell(h)
 		cell.SetAttributes(tcell.AttrBold)
@@ -30,25 +26,65 @@ func scheduleTable(schedule Schedule) *tview.Table {
 		table.SetCell(0, i, cell)
 	}
 
-	for i, p := range schedule.periods {
-		values := []string{
-			fmtTime(p.starts),
-			fmtTime(p.ends),
-			emailToName(p.email),
-		}
-		for j, v := range values {
-			cell := tview.NewTableCell(v)
-			cell.SetMaxWidth(15)
-
-			table.SetCell(i+1, j, cell)
+	for r, d := range data {
+		for c, v := range d {
+			table.SetCellSimple(r+1, c, v)
 		}
 	}
 
 	return table
 }
 
+func alertsTable(title string, data []Alert) *tview.Table {
+	headers := []string{
+		"Created At",
+		"Message",
+		"Prio",
+		"Acked",
+		"Owner",
+	}
+
+	rows := make([][]string, 0, len(data))
+	for _, d := range data {
+		// Escape end brackets in message to avoid color changes.
+		msg := strings.ReplaceAll(d.message, "]", "[]")
+
+		r := []string{
+			fmtTime(d.created),
+			msg,
+			d.priority,
+			fmt.Sprintf("%t", d.acknowledged),
+			emailToName(d.owner),
+		}
+		rows = append(rows, r)
+	}
+
+	return tableBox(title, headers, rows)
+}
+
+func scheduleTable(title string, data Schedule) *tview.Table {
+	headers := []string{
+		"Start Time",
+		"End Time",
+		"Name",
+	}
+
+	rows := make([][]string, 0, len(data.periods))
+	for _, p := range data.periods {
+		r := []string{
+			fmtTime(p.starts),
+			fmtTime(p.ends),
+			emailToName(p.email),
+		}
+		rows = append(rows, r)
+	}
+
+	return tableBox(title, headers, rows)
+}
+
 func fmtTime(t time.Time) string {
-	if t.Before(time.Now()) {
+	now := time.Now()
+	if t.After(now.Add(-time.Second)) && t.Before(now) {
 		return "Now"
 	}
 	return t.Local().Format("Mon Jan _2 15:04")
@@ -88,7 +124,18 @@ func main() {
 		if err != nil {
 			log.Fatalf("get schedule: %v", err)
 		}
-		pages.AddPage(strconv.Itoa(i), scheduleTable(schedule), true, i == 0)
+
+		alerts, err := og.getAlerts(ctx, name)
+		if err != nil {
+			log.Fatalf("get alerts: %v", err)
+		}
+
+		flex := tview.NewFlex()
+		flex.SetDirection(tview.FlexRow)
+		flex.AddItem(scheduleTable("Schedule", schedule), 0, 1, true)
+		flex.AddItem(alertsTable("Open Alerts", alerts), 0, 1, false)
+
+		pages.AddPage(strconv.Itoa(i), flex, true, i == 0)
 
 		fmt.Fprintf(menu, `%d ["%d"][darkcyan]%s[white][""]  `, i+1, i, name)
 	}

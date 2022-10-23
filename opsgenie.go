@@ -158,6 +158,38 @@ func (og *opsGenieClient) getSchedule(ctx context.Context, teamName string, week
 	return s, nil
 }
 
+type Alert struct {
+	created      time.Time
+	message        string
+	priority     string
+	acknowledged bool
+	owner        string
+}
+
+func (og *opsGenieClient) getAlerts(ctx context.Context, teamName string) ([]Alert, error) {
+	res, err := og.alerts.List(ctx, &ogAlert.ListAlertRequest{
+		Limit: 20,
+		Sort:  ogAlert.CreatedAt,
+		Query: fmt.Sprintf(`status:open AND responders: "%s"`, teamName),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list alerts: %w", err)
+	}
+
+	alerts := make([]Alert, 0, len(res.Alerts))
+	for _, a := range res.Alerts {
+		alerts = append(alerts, Alert{
+			created:      a.CreatedAt,
+			message:        a.Message,
+			priority:     string(a.Priority),
+			acknowledged: a.Acknowledged,
+			owner:        a.Owner,
+		})
+	}
+
+	return alerts, nil
+}
+
 type Config struct {
 	OpsGenie struct {
 		APIKey string `yaml:"apiKey"`
